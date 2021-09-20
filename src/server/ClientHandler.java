@@ -143,27 +143,9 @@ public class ClientHandler implements Runnable{
             }
             out.close();
         } catch (NoSuchAlgorithmException e) {
-            ChatServer.outs.remove(out);
-            ChatServer.onlineAccounts.remove(accountName);
-            receiverThread.shutdown();
-            try {
-                in.close();
-                clientSocket.close();
-            } catch (IOException e1) {
-                e1.printStackTrace();
-            }
-            out.close();
+            e.printStackTrace();
         } catch (InvalidKeySpecException e) {
-            ChatServer.outs.remove(out);
-            ChatServer.onlineAccounts.remove(accountName);
-            receiverThread.shutdown();
-            try {
-                in.close();
-                clientSocket.close();
-            } catch (IOException e1) {
-                e1.printStackTrace();
-            }
-            out.close();
+            e.printStackTrace();
         }
     }
 }
