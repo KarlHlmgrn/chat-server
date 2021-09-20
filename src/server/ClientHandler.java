@@ -32,10 +32,12 @@ public class ClientHandler implements Runnable{
             String request = in.readLine();
             if(request.equals("logIn")) {
                 if(userLogIn()) {
+                    ChatServer.onlineAccounts.add(accountName);
                     return true;
                 }
             } else if(request.equals("createAccount")) {
                 if(userCreateAccount(null, null)) {
+                    ChatServer.onlineAccounts.add(accountName);
                     return true;
                 }
             }
@@ -72,6 +74,10 @@ public class ClientHandler implements Runnable{
     public boolean userLogIn() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
         String accountName = in.readLine();
         String password = in.readLine();
+        if(ChatServer.onlineAccounts.contains(accountName)) {
+            out.println("You can't login with an account that's already online");
+            return false;
+        }
         if(ChatServer.accounts.containsKey(accountName)) {
             Base64.Encoder enc = Base64.getEncoder();
             Base64.Decoder decoder = Base64.getDecoder();
@@ -128,7 +134,6 @@ public class ClientHandler implements Runnable{
             ChatServer.print(accountName + " connected to the server");
             MessageSender messageSender = new MessageSender(accountName, "Just joined the chat!");
             messageSender.run();
-            ChatServer.onlineAccounts.add(accountName);
             MessageReceiver messageReceiver = new MessageReceiver(in, accountName, this);
             receiverThread.execute(messageReceiver);
         } catch (IOException e) {
