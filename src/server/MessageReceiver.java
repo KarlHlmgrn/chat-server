@@ -9,11 +9,13 @@ public class MessageReceiver implements Runnable {
     private String accountName;
     private ExecutorService senderThreads = Executors.newCachedThreadPool();
     private ClientHandler clientHandler;
+    private String roomID;
 
     public MessageReceiver(BufferedReader in, String accountName, ClientHandler clientHandler) {
         this.in = in;
         this.accountName = accountName;
         this.clientHandler = clientHandler;
+        this.roomID = clientHandler.roomID;
     }
     @Override
     public void run() {
@@ -22,7 +24,7 @@ public class MessageReceiver implements Runnable {
                 String message = in.readLine();
                 ChatServer.messageAccountNames.add(accountName);
                 ChatServer.messages.add(message);
-                MessageSender messageSender = new MessageSender(accountName, message);
+                MessageSender messageSender = new MessageSender(accountName, message, roomID);
                 senderThreads.execute(messageSender);
                 // out.println("received");
             } catch (IOException e) {

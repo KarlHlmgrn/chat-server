@@ -6,7 +6,10 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -19,6 +22,7 @@ public class ClientHandler implements Runnable{
     private BufferedReader in;
     public String accountName;
     private ExecutorService receiverThread = Executors.newSingleThreadExecutor();
+    public String roomID;
 
     public ClientHandler(Socket socket) throws IOException{
         this.clientSocket = socket;
@@ -95,25 +99,57 @@ public class ClientHandler implements Runnable{
                 return false;
             }
         } else {
-            out.println("create?");
-            String response = in.readLine();
-            if(response.equals("yes")){
-                if(userCreateAccount(accountName, password)) {
-                    return true;
-                } else {
-                    return false;
+            out.println("No account has the username " + accountName);
+            return false;
+        }
+    }
+
+    public void roomHandler() throws IOException {
+        while(true) {
+            String request = in.readLine();
+            if(request.equals("createRoom")) {
+                while(true) {
+                    Random random = new Random();
+                    int roomIDint = random.nextInt(0xFFFFFF + 1);
+                    String formattedRoomID = String.format("%06x", roomIDint);
+                    if(!ChatServer.roomIDS.keySet().contains(formattedRoomID)) {
+                        ArrayList<PrintWriter> roomOuts = new ArrayList<>();
+                        roomOuts.add(out);
+                        ChatServer.roomIDS.put(formattedRoomID, roomOuts);
+                        roomID = formattedRoomID;
+                        ArrayList<String> temp = new ArrayList<>();
+                        temp.add(accountName);
+                        ChatServer.onlineAccountsInRoom.put(roomID, temp);
+                        out.println(formattedRoomID);
+                        break;
+                    }
                 }
-            } else {
-                out.println("");
-                return false;
+                break;
+            } else if(request.equals("joinRoom")) {
+                roomID = in.readLine();
+                if(ChatServer.roomIDS.keySet().contains(roomID)) {
+                    ChatServer.roomIDS.get(roomID).add(out);
+                    out.println("success");
+                    for(String user : ChatServer.onlineAccountsInRoom.get(roomID)) {
+                        if(!user.equals(accountName)) {
+                            out.println(user);
+                        }
+                    }
+                    out.println("done");
+                    ChatServer.onlineAccountsInRoom.get(roomID).add(accountName);
+                    break;
+                } else {
+                    out.println("There isn't a room with this ID");
+                }
             }
         }
     }
 
     public void error(ClientHandler clientHandler) {
-        ChatServer.outs.remove(out);
+        ChatServer.roomIDS.get(roomID).remove(out);
         ChatServer.onlineAccounts.remove(accountName);
-        MessageSender messageSender = new MessageSender(accountName, "Left the chat");
+        ChatServer.onlineAccountsInRoom.get(roomID).remove(accountName);
+        MessageSender messageSender = new MessageSender(accountName, "Left the room", roomID);
         messageSender.run();
         ChatServer.print(accountName + " disconnected from the server");
         receiverThread.shutdown();
@@ -131,8 +167,9 @@ public class ClientHandler implements Runnable{
     public void run() {
         try {
             accountHandler();
-            ChatServer.print(accountName + " connected to the server");
-            MessageSender messageSender = new MessageSender(accountName, "Just joined the chat!");
+            roomHandler();
+            ChatServer.print(accountName + " connected to room " + roomID);
+            MessageSender messageSender = new MessageSender(accountName, "Just joined the chat!", roomID);
             messageSender.run();
             MessageReceiver messageReceiver = new MessageReceiver(in, accountName, this);
             receiverThread.execute(messageReceiver);

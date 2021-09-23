@@ -16,6 +16,9 @@ public class ChatServer {
     private BufferedReader in;
     public static Map<String, String> accounts = new HashMap<String, String>();
     public static ArrayList<String> onlineAccounts = new ArrayList<>();
+    public static Map<String, ArrayList<PrintWriter>> roomIDS = new HashMap<>();
+    public static Map<String, ArrayList<String>> accountJoinedRooms = new HashMap<>();
+    public static Map<String, ArrayList<String>> onlineAccountsInRoom = new HashMap<>();
     public static ArrayList<String> messageAccountNames = new ArrayList<>();
     public static ArrayList<String> messages = new ArrayList<>();
     public static ArrayList<ClientHandler> clients = new ArrayList<>();
