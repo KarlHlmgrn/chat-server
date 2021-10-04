@@ -9,7 +9,9 @@ import java.security.spec.KeySpec;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -18,7 +20,7 @@ import javax.crypto.spec.PBEKeySpec;
 
 public class ClientHandler implements Runnable{
     private Socket clientSocket;
-    private PrintWriter out;
+    public PrintWriter out;
     private BufferedReader in;
     public String accountName;
     private ExecutorService receiverThread = Executors.newSingleThreadExecutor();
@@ -92,6 +94,13 @@ public class ClientHandler implements Runnable{
             byte[] hash = factory.generateSecret(spec).getEncoded();
             if(enc.encodeToString(hash).equals(storedHash)) {
                 out.println("success");
+                if(ChatServer.friends.containsKey(accountName)) {
+                    for(String friend : ChatServer.friends.get(accountName)) {
+                        String friendRoomID = ChatServer.accountRooms.get(friend);
+                        out.println(friend + "$" + friendRoomID);
+                    }
+                }
+                out.println("done");
                 this.accountName = accountName;
                 return true;
             } else {
@@ -121,6 +130,7 @@ public class ClientHandler implements Runnable{
                         temp.add(accountName);
                         ChatServer.onlineAccountsInRoom.put(roomID, temp);
                         out.println(formattedRoomID);
+                        ChatServer.accountRooms.put(accountName, formattedRoomID);
                         break;
                     }
                 }
@@ -137,18 +147,47 @@ public class ClientHandler implements Runnable{
                     }
                     out.println("done");
                     ChatServer.onlineAccountsInRoom.get(roomID).add(accountName);
+                    ChatServer.accountRooms.put(accountName, roomID);
                     break;
                 } else {
                     out.println("There isn't a room with this ID");
                 }
             }
         }
+        ChatServer.print(accountName + " connected to room " + roomID);
+        MessageSender messageSender = new MessageSender(accountName, "Just joined the chat!", roomID);
+        messageSender.run();
+    }
+
+    public boolean friendHandler(String friendName) {
+        if(ChatServer.accounts.containsKey(friendName)) {
+            if(ChatServer.friends.containsKey(accountName)) {
+                ChatServer.friends.get(accountName).add(friendName);
+            } else {
+                ArrayList<String> friendNames = new ArrayList<>();
+                friendNames.add(friendName);
+                ChatServer.friends.put(accountName, friendNames);
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public void roomLeave() throws IOException {
+        ChatServer.roomIDS.get(roomID).remove(out);
+        ChatServer.onlineAccountsInRoom.get(roomID).remove(accountName);
+        ChatServer.accountRooms.put(accountName, "Offline");
+        MessageSender messageSender = new MessageSender(accountName, "Left the room", roomID);
+        messageSender.run();
+        roomHandler();
     }
 
     public void error(ClientHandler clientHandler) {
         ChatServer.roomIDS.get(roomID).remove(out);
         ChatServer.onlineAccounts.remove(accountName);
         ChatServer.onlineAccountsInRoom.get(roomID).remove(accountName);
+        ChatServer.accountRooms.put(accountName, "Offline");
         MessageSender messageSender = new MessageSender(accountName, "Left the room", roomID);
         messageSender.run();
         ChatServer.print(accountName + " disconnected from the server");
@@ -168,9 +207,6 @@ public class ClientHandler implements Runnable{
         try {
             accountHandler();
             roomHandler();
-            ChatServer.print(accountName + " connected to room " + roomID);
-            MessageSender messageSender = new MessageSender(accountName, "Just joined the chat!", roomID);
-            messageSender.run();
             MessageReceiver messageReceiver = new MessageReceiver(in, accountName, this);
             receiverThread.execute(messageReceiver);
         } catch (IOException e) {

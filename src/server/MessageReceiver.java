@@ -24,8 +24,22 @@ public class MessageReceiver implements Runnable {
                 String message = in.readLine();
                 ChatServer.messageAccountNames.add(accountName);
                 ChatServer.messages.add(message);
-                MessageSender messageSender = new MessageSender(accountName, message, roomID);
-                senderThreads.execute(messageSender);
+                if(!message.startsWith("/")) {
+                    MessageSender messageSender = new MessageSender(accountName, message, roomID);
+                    senderThreads.execute(messageSender);
+                } else if(message.startsWith("/add")) {
+                    message = message.replace("/add ", "");
+                    boolean success = clientHandler.friendHandler(message);
+                    if(success) {
+                        clientHandler.out.println("You added");
+                        clientHandler.out.println(message + " as a friend");
+                    } else {
+                        clientHandler.out.println(message + " does not exist");
+                        clientHandler.out.println(" ");
+                    }
+                } else if(message.startsWith("/leaveroom")) {
+                    clientHandler.roomLeave();
+                }
                 // out.println("received");
             } catch (IOException e) {
                 clientHandler.error(clientHandler);
