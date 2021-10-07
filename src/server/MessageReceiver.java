@@ -39,6 +39,7 @@ public class MessageReceiver implements Runnable {
                     }
                 } else if(message.startsWith("/leaveroom")) {
                     clientHandler.roomLeave();
+                    this.roomID = clientHandler.roomID;
                 }
                 // out.println("received");
             } catch (IOException e) {

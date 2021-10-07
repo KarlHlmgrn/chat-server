@@ -125,7 +125,7 @@ public class ClientHandler implements Runnable{
                         ArrayList<PrintWriter> roomOuts = new ArrayList<>();
                         roomOuts.add(out);
                         ChatServer.roomIDS.put(formattedRoomID, roomOuts);
-                        roomID = formattedRoomID;
+                        this.roomID = formattedRoomID;
                         ArrayList<String> temp = new ArrayList<>();
                         temp.add(accountName);
                         ChatServer.onlineAccountsInRoom.put(roomID, temp);
@@ -136,7 +136,7 @@ public class ClientHandler implements Runnable{
                 }
                 break;
             } else if(request.equals("joinRoom")) {
-                roomID = in.readLine();
+                this.roomID = in.readLine();
                 if(ChatServer.roomIDS.keySet().contains(roomID)) {
                     ChatServer.roomIDS.get(roomID).add(out);
                     out.println("success");
@@ -152,6 +152,14 @@ public class ClientHandler implements Runnable{
                 } else {
                     out.println("There isn't a room with this ID");
                 }
+            } else if(request.equals("refresh")) {
+                if(ChatServer.friends.containsKey(accountName)) {
+                    for(String friend : ChatServer.friends.get(accountName)) {
+                        String friendRoomID = ChatServer.accountRooms.get(friend);
+                        out.println(friend + "$" + friendRoomID);
+                    }
+                }
+                out.println("done");
             }
         }
         ChatServer.print(accountName + " connected to room " + roomID);
@@ -178,6 +186,8 @@ public class ClientHandler implements Runnable{
         ChatServer.roomIDS.get(roomID).remove(out);
         ChatServer.onlineAccountsInRoom.get(roomID).remove(accountName);
         ChatServer.accountRooms.put(accountName, "Offline");
+        out.println(accountName);
+        out.println("/(leave");
         MessageSender messageSender = new MessageSender(accountName, "Left the room", roomID);
         messageSender.run();
         roomHandler();
